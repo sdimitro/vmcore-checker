@@ -63,6 +63,14 @@ make size-check   # cross-builds and enforces the 2.5 MiB size budget
 make test
 ```
 
+Tagged releases publish raw binaries (linux amd64/arm64, macOS arm64)
+and `.deb` packages (linux amd64/arm64) with sha256 checksums; debs are
+built by [scripts/build-deb.sh](scripts/build-deb.sh).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
 Builds are static (`CGO_ENABLED=0`), stripped (`-s -w`), and reproducible
 (`-trimpath`). Stdlib only — the binary lands well under the initramfs
 budget and peaks below 10 MB RSS on a full kernel log.
