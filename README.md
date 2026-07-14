@@ -1,0 +1,85 @@
+# vmcore-checker
+
+Skip vmcore capture for crashes we already know about.
+
+`vmcore-checker` runs inside the kdump crash kernel. It parses the
+crashed kernel's log (extracted from `/proc/vmcore` with `vmcore-dmesg`
+or `makedumpfile --dump-dmesg`), computes deterministic crash
+fingerprints (via
+[`github.com/sdimitro/crashfp`](https://github.com/sdimitro/crashfp)),
+and compares them against a curated skip-list of known issues. On a
+match it writes a small `note.json` and exits `0`, letting the kdump
+hook skip the multi-minute vmcore capture and reboot immediately. The
+note is uploaded where the dump would have gone, so the triage pipeline
+that processes dumps post-reboot can still record the occurrence on the
+tracked issue.
+
+Anything unexpected — unknown crash, unparsable log, missing file,
+corrupt skip-list — exits `1` and the dump is captured normally.
+**The tool always fails open.**
+
+The [`note`](note/) package defines the `note.json` wire format and can
+be imported by note consumers, so the format cannot drift between the
+writer and its readers.
+
+## Usage
+
+```
+vmcore-checker [--skiplist extras] [--note out.json] dmesg.txt
+vmcore-checker --print-skiplist
+vmcore-checker --version
+```
+
+Exit codes: `0` known issue matched (skip capture), `1` anything else
+(capture normally).
+
+## Skip-list
+
+The primary skip-list is **embedded in the binary** at build time from
+`skiplist.txt`. Generate it from your crash-tracking system (issue
+tracker, database, …) before building; keep it curated — e.g. only
+issues with several recorded occurrences, or explicitly flagged by a
+human — so first occurrences always get a full dump.
+
+`--skiplist <file>` merges extra entries on top — for hot-adding a known
+issue on a node without rebuilding the initramfs. Line format:
+
+```
+# generated 2026-07-14T12:00:00Z from KERN
+fp-type-rip:de433837302e1e77 fp-top3:9a1b2c3d4e5f6071 KERN-1234
+```
+
+One entry per line: the 16-hex prefix of the crash's `type_rip`
+fingerprint hash (required), optionally the `top3` prefix, and
+optionally an issue key that gets recorded in the note. When a line
+carries `fp-top3`, both hashes must match (more conservative).
+
+## Building
+
+```bash
+make build        # host build
+make linux-arm64  # static cross-build for the crash kernel
+make size-check   # cross-builds and enforces the 2.5 MiB size budget
+make test
+```
+
+Builds are static (`CGO_ENABLED=0`), stripped (`-s -w`), and reproducible
+(`-trimpath`). Stdlib only — the binary lands well under the initramfs
+budget and peaks below 10 MB RSS on a full kernel log.
+
+## Crash-kernel integration
+
+See [scripts/kdump-precapture-hook.sh](scripts/kdump-precapture-hook.sh)
+for the pre-capture hook: extract dmesg, run the checker, skip or
+capture based on the exit code.
+
+```mermaid
+flowchart TD
+    crash[Kernel panic, kexec into crash kernel] --> extract[vmcore-dmesg /proc/vmcore]
+    extract --> checker[vmcore-checker]
+    checker -->|exit 0| note[Save dmesg.txt + note.json, skip capture]
+    checker -->|exit 1| capture[Normal makedumpfile capture]
+    note --> reboot[Reboot]
+    capture --> reboot
+    reboot --> watch[Triage pipeline ingests the note, records the occurrence on the tracked issue]
+```

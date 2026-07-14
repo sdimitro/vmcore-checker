@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_call:
+    inputs:
+      version:
+        description: "Tag/version to release (e.g. v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Release binaries embed the placeholder skip-list. Deployments
+      # that bake in a real list (the initramfs pipeline) run
+      # `make skiplist` and rebuild; released binaries still take
+      # entries via --skiplist.
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          go build -trimpath \
+            -ldflags "-s -w -X main.version=${{ inputs.version || github.ref_name }}" \
+            -o vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }} .
+
+      - name: Generate checksum
+        run: sha256sum vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }} > vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }}
+            vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version || github.ref_name }}
+          files: |
+            vmcore-checker-linux-amd64/vmcore-checker-linux-amd64
+            vmcore-checker-linux-amd64/vmcore-checker-linux-amd64.sha256
+            vmcore-checker-linux-arm64/vmcore-checker-linux-arm64
+            vmcore-checker-linux-arm64/vmcore-checker-linux-arm64.sha256
+            vmcore-checker-darwin-arm64/vmcore-checker-darwin-arm64
+            vmcore-checker-darwin-arm64/vmcore-checker-darwin-arm64.sha256
+          generate_release_notes: true

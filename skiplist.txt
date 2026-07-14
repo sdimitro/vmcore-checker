@@ -1,0 +1,7 @@
+# vmcore-checker embedded skip-list (placeholder).
+#
+# The initramfs build replaces this file with real entries exported
+# from the crash-tracking system before `go build`.
+#
+# Format: one entry per line, whitespace-separated fields:
+#   fp-type-rip:<hex>  [fp-top3:<hex>]  [ISSUE-KEY]
