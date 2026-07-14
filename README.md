@@ -83,9 +83,11 @@ across the whole golden corpus and all fail-open cases, in CI and again
 at release time.
 
 Tagged releases publish raw binaries (linux amd64/arm64, macOS arm64),
-TinyGo binaries (linux amd64/arm64), and `.deb` packages (linux
-amd64/arm64) with sha256 checksums; debs are built by
-[scripts/build-deb.sh](scripts/build-deb.sh).
+TinyGo binaries (linux amd64/arm64), and `.deb` packages for both
+(linux amd64/arm64) with sha256 checksums; debs are built by
+[scripts/build-deb.sh](scripts/build-deb.sh). The `vmcore-checker` and
+`vmcore-checker-tiny` packages both install `/usr/bin/vmcore-checker`
+and conflict with each other, so install exactly one.
 
 ## Crash-kernel integration
 

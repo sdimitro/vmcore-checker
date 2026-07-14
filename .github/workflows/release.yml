@@ -78,11 +78,18 @@ jobs:
             -ldflags "-X main.version=${{ inputs.version || github.ref_name }}" \
             -o vmcore-checker-tiny-linux-${{ matrix.goarch }} .
 
+      - name: Build tiny deb package
+        if: matrix.goos == 'linux'
+        run: |
+          version="${{ inputs.version || github.ref_name }}"
+          scripts/build-deb.sh vmcore-checker-tiny-linux-${{ matrix.goarch }} "${version#v}" ${{ matrix.goarch }} . vmcore-checker-tiny
+
       - name: Generate checksums
         run: |
           for f in vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }} \
                    vmcore-checker-tiny-linux-${{ matrix.goarch }} \
-                   vmcore-checker_*_${{ matrix.goarch }}.deb; do
+                   vmcore-checker_*_${{ matrix.goarch }}.deb \
+                   vmcore-checker-tiny_*_${{ matrix.goarch }}.deb; do
             [ -f "$f" ] && sha256sum "$f" > "$f.sha256"
           done
           true
@@ -98,6 +105,8 @@ jobs:
             vmcore-checker-tiny-linux-${{ matrix.goarch }}.sha256
             vmcore-checker_*.deb
             vmcore-checker_*.deb.sha256
+            vmcore-checker-tiny_*.deb
+            vmcore-checker-tiny_*.deb.sha256
 
   release:
     name: Release
@@ -118,12 +127,16 @@ jobs:
             vmcore-checker-linux-amd64/vmcore-checker-tiny-linux-amd64.sha256
             vmcore-checker-linux-amd64/vmcore-checker_*.deb
             vmcore-checker-linux-amd64/vmcore-checker_*.deb.sha256
+            vmcore-checker-linux-amd64/vmcore-checker-tiny_*.deb
+            vmcore-checker-linux-amd64/vmcore-checker-tiny_*.deb.sha256
             vmcore-checker-linux-arm64/vmcore-checker-linux-arm64
             vmcore-checker-linux-arm64/vmcore-checker-linux-arm64.sha256
             vmcore-checker-linux-arm64/vmcore-checker-tiny-linux-arm64
             vmcore-checker-linux-arm64/vmcore-checker-tiny-linux-arm64.sha256
             vmcore-checker-linux-arm64/vmcore-checker_*.deb
             vmcore-checker-linux-arm64/vmcore-checker_*.deb.sha256
+            vmcore-checker-linux-arm64/vmcore-checker-tiny_*.deb
+            vmcore-checker-linux-arm64/vmcore-checker-tiny_*.deb.sha256
             vmcore-checker-darwin-arm64/vmcore-checker-darwin-arm64
             vmcore-checker-darwin-arm64/vmcore-checker-darwin-arm64.sha256
           generate_release_notes: true
