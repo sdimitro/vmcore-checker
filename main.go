@@ -52,6 +52,7 @@ func run(args []string, errw *os.File) int {
 	fs.SetOutput(errw)
 	skiplistPath := fs.String("skiplist", "", "file with extra skip-list entries, merged with the embedded list")
 	notePath := fs.String("note", "", "write a note.json describing the matched crash to this path")
+	stream := fs.Bool("stream", false, "read the dmesg line by line (constant memory) instead of loading it whole")
 	printList := fs.Bool("print-skiplist", false, "print the effective skip-list and exit")
 	showVersion := fs.Bool("version", false, "print version and exit")
 	profileFlags(fs)
@@ -87,13 +88,11 @@ func run(args []string, errw *os.File) int {
 		return 1
 	}
 
-	raw, err := os.ReadFile(fs.Arg(0))
+	crash, err := parseInput(fs.Arg(0), *stream)
 	if err != nil {
 		fmt.Fprintf(errw, "vmcore-checker: read dmesg: %v\n", err)
 		return 1
 	}
-
-	crash := dmesgcrash.ParseBytes(raw)
 	if crash == nil || len(crash.StackTrace) == 0 {
 		fmt.Fprintf(errw, "vmcore-checker: no crash backtrace found in dmesg; capturing dump\n")
 		return 1
@@ -129,6 +128,29 @@ func run(args []string, errw *os.File) int {
 	}
 
 	return 0
+}
+
+// parseInput extracts the crash report from the dmesg file. The default
+// path loads the file and parses in place (peak memory ~= file size);
+// with stream=true it parses line by line in constant memory (<1 MB),
+// useful when the crash kernel's reservation is very tight. Both paths
+// produce identical results — enforced by TestStreamMatchesDefault here
+// and the equivalence suite in crashfp, and cross-checked against the
+// TinyGo build by scripts/verify-tiny.sh.
+func parseInput(path string, stream bool) (*dmesgcrash.Crash, error) {
+	if stream {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return dmesgcrash.ParseReader(f)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return dmesgcrash.ParseBytes(raw), nil
 }
 
 func orUnknown(s string) string {

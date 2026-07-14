@@ -25,13 +25,19 @@ writer and its readers.
 ## Usage
 
 ```
-vmcore-checker [--skiplist extras] [--note out.json] dmesg.txt
+vmcore-checker [--stream] [--skiplist extras] [--note out.json] dmesg.txt
 vmcore-checker --print-skiplist
 vmcore-checker --version
 ```
 
 Exit codes: `0` known issue matched (skip capture), `1` anything else
 (capture normally).
+
+By default the log is loaded whole, so peak memory is about the file
+size plus ~1 MB. With `--stream` it is parsed line by line in **constant
+memory** (<1 MB even for a 32 MiB log) — useful when the crashkernel
+reservation is very tight. Both modes produce byte-identical results;
+that equivalence is enforced by tests and by the release parity gate.
 
 ## Skip-list
 

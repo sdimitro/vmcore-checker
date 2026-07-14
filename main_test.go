@@ -164,6 +164,59 @@ func TestRun_KnownCrashWritesNote(t *testing.T) {
 	}
 }
 
+// TestStreamMatchesDefault verifies the two input modes are
+// interchangeable: same exit code and byte-identical note.json (modulo
+// the checked_at timestamp) whether the log is loaded whole (default)
+// or streamed line by line (--stream).
+func TestStreamMatchesDefault(t *testing.T) {
+	dir := t.TempDir()
+	extras := writeFile(t, dir, "extras", "fp-type-rip:"+sampleTypeRIPPrefix+" KERN-1234\n")
+
+	normalize := func(b []byte) string {
+		lines := strings.Split(string(b), "\n")
+		for i, l := range lines {
+			if strings.Contains(l, `"checked_at"`) {
+				lines[i] = `  "checked_at": "X",`
+			}
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	inputs := map[string]string{
+		"matching crash":   sampleDmesg,
+		"no crash":         "[ 0.0] [T0] Linux version 6.1.0 (a@b) (gcc) #1\n[ 1.0] [T1] systemd booted\n",
+		"garbage":          "not a kernel log\n",
+		"empty":            "",
+		"trailing noise":   sampleDmesg + "[ 9999.0] [T1] systemd[1]: Started Session 1 of User root.\n",
+		"no final newline": strings.TrimSuffix(sampleDmesg, "\n"),
+	}
+
+	for name, content := range inputs {
+		t.Run(name, func(t *testing.T) {
+			input := writeFile(t, dir, "in.txt", content)
+			defNote := filepath.Join(dir, "def-note.json")
+			strNote := filepath.Join(dir, "str-note.json")
+			os.Remove(defNote)
+			os.Remove(strNote)
+
+			defCode := run([]string{"--skiplist", extras, "--note", defNote, input}, os.Stderr)
+			strCode := run([]string{"--stream", "--skiplist", extras, "--note", strNote, input}, os.Stderr)
+			if defCode != strCode {
+				t.Fatalf("exit codes differ: default=%d stream=%d", defCode, strCode)
+			}
+
+			defData, defErr := os.ReadFile(defNote)
+			strData, strErr := os.ReadFile(strNote)
+			if os.IsNotExist(defErr) != os.IsNotExist(strErr) {
+				t.Fatalf("note presence differs: default=%v stream=%v", defErr, strErr)
+			}
+			if defErr == nil && normalize(defData) != normalize(strData) {
+				t.Errorf("notes differ:\ndefault:\n%s\nstream:\n%s", defData, strData)
+			}
+		})
+	}
+}
+
 func TestRun_FailOpen(t *testing.T) {
 	dir := t.TempDir()
 	dmesg := writeFile(t, dir, "dmesg.txt", sampleDmesg)

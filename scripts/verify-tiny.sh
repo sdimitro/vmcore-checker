@@ -1,12 +1,14 @@
 #!/bin/sh
-# Behavioral parity gate between the stock Go build and the TinyGo build.
+# Behavioral parity gate between the stock Go build and the TinyGo
+# build, and between the two input modes (default whole-file load vs
+# --stream line-by-line).
 #
-# Builds both compilers' binaries for the host platform, runs them over
-# every golden corpus kernel log plus the fail-open cases, and requires
-# identical exit codes and byte-identical note.json output (modulo the
-# checked_at timestamp). Fingerprint hashes are deterministic, so any
-# divergence between the two compilers is a hard failure — the TinyGo
-# binary must never skip a different set of dumps than the stock one.
+# Builds both compilers' binaries for the host platform, runs each in
+# both modes over every golden corpus kernel log plus the fail-open
+# cases, and requires identical exit codes and byte-identical note.json
+# output (modulo the checked_at timestamp) across all four combinations.
+# Fingerprint hashes are deterministic, so any divergence is a hard
+# failure — no build or mode may skip a different set of dumps.
 #
 # Usage: scripts/verify-tiny.sh  (from the repository root)
 # Env: TINYGO (default: tinygo), GO (default: go)
@@ -45,39 +47,49 @@ printf 'fp-type-rip:NOTHEX\n' > "$WORK/badlist"
 fail=0
 
 # run <name> <expected-note: yes|no> [args...]
+# Executes all four combinations (stock/tiny x default/--stream) and
+# compares every one against stock-default.
 run() {
     name=$1; note_expected=$2; shift 2
 
     for flavor in stock tiny; do
-        rm -f "$WORK/$flavor-note.json"
-        set +e
-        "$WORK/$flavor" --note "$WORK/$flavor-note.json" "$@" \
-            > "$WORK/$flavor-stdout" 2> "$WORK/$flavor-stderr"
-        echo $? > "$WORK/$flavor-exit"
-        set -e
+        for mode in default stream; do
+            id="$flavor-$mode"
+            modeflag=""
+            [ "$mode" = stream ] && modeflag="--stream"
+            rm -f "$WORK/$id-note.json"
+            set +e
+            # shellcheck disable=SC2086
+            "$WORK/$flavor" $modeflag --note "$WORK/$id-note.json" "$@" \
+                > "$WORK/$id-stdout" 2> "$WORK/$id-stderr"
+            echo $? > "$WORK/$id-exit"
+            set -e
+            sed 's/"checked_at": "[^"]*"/"checked_at": "X"/' \
+                "$WORK/$id-note.json" > "$WORK/$id-note-norm" 2>/dev/null || : > "$WORK/$id-note-norm"
+        done
     done
 
-    if ! cmp -s "$WORK/stock-exit" "$WORK/tiny-exit"; then
-        echo "FAIL [$name]: exit codes differ: stock=$(cat "$WORK/stock-exit") tiny=$(cat "$WORK/tiny-exit")"
+    for id in stock-stream tiny-default tiny-stream; do
+        if ! cmp -s "$WORK/stock-default-exit" "$WORK/$id-exit"; then
+            echo "FAIL [$name]: exit codes differ: stock-default=$(cat "$WORK/stock-default-exit") $id=$(cat "$WORK/$id-exit")"
+            fail=1
+            return
+        fi
+        if ! cmp -s "$WORK/stock-default-note-norm" "$WORK/$id-note-norm"; then
+            echo "FAIL [$name]: notes differ (stock-default vs $id):"
+            diff "$WORK/stock-default-note-norm" "$WORK/$id-note-norm" || true
+            fail=1
+            return
+        fi
+    done
+
+    if [ "$note_expected" = yes ] && [ ! -s "$WORK/stock-default-note-norm" ]; then
+        echo "FAIL [$name]: expected a note but none was written"
         fail=1
         return
     fi
 
-    if [ "$note_expected" = yes ]; then
-        for flavor in stock tiny; do
-            [ -f "$WORK/$flavor-note.json" ] || { echo "FAIL [$name]: $flavor wrote no note"; fail=1; return; }
-            # checked_at is wall-clock time; normalize it before diffing.
-            sed 's/"checked_at": "[^"]*"/"checked_at": "X"/' "$WORK/$flavor-note.json" > "$WORK/$flavor-note-norm"
-        done
-        if ! cmp -s "$WORK/stock-note-norm" "$WORK/tiny-note-norm"; then
-            echo "FAIL [$name]: notes differ:"
-            diff "$WORK/stock-note-norm" "$WORK/tiny-note-norm" || true
-            fail=1
-            return
-        fi
-    fi
-
-    echo "ok [$name]: exit=$(cat "$WORK/stock-exit")"
+    echo "ok [$name]: exit=$(cat "$WORK/stock-default-exit") (4 variants agree)"
 }
 
 for log in "$CORPUS_DIR"/*.txt; do

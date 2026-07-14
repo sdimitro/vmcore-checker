@@ -178,6 +178,28 @@ not worth it at these numbers. GC probes now show no meaningful spread
 (GOGC/GOMEMLIMIT within ~1 MB of default), confirming the peak is live
 data, so no GC tuning is baked into the binary.
 
+## Postscript: the --stream mode
+
+A follow-up experiment asked how much a line-streaming parser could
+save on top of the above. Answer: peak RSS becomes **constant** — the
+binary keeps only a 62-line ring buffer and the bounded ~202-line crash
+region. Measured with the shipped tiny binary (linux-arm64, GNU time):
+
+| input     | default (KB) | --stream (KB) |
+|-----------|-------------:|--------------:|
+| real-700k |        1,472 |           832 |
+| synth-32m |       33,536 |           704 |
+
+This shipped as `crashfp dmesgcrash.ParseReader` plus the checker's
+`--stream` flag (binary cost: ~6 KB on the TinyGo build). The default
+stays the whole-file path; `--stream` is for very tight crashkernel
+reservations. Equivalence between the modes is enforced three ways:
+`TestParseReaderMatchesParse` in crashfp (streaming vs Parse, including
+capture-restart edge cases), `TestStreamMatchesDefault` in this repo
+(CLI-level, byte-identical notes), and `scripts/verify-tiny.sh`, which
+now runs all four combinations (stock/tiny x default/stream) in CI and
+at release time.
+
 ## Artifacts
 
 Everything under `profiling/results/<platform>/{baseline,optimized}/`:
