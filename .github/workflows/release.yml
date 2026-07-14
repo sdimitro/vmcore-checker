@@ -56,9 +56,33 @@ jobs:
           version="${{ inputs.version || github.ref_name }}"
           scripts/build-deb.sh vmcore-checker-linux-${{ matrix.goarch }} "${version#v}" ${{ matrix.goarch }}
 
+      - name: Install TinyGo
+        if: matrix.goos == 'linux'
+        run: |
+          wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.41.1/tinygo_0.41.1_amd64.deb
+          sudo dpkg -i tinygo_0.41.1_amd64.deb
+
+      # The tiny build must never diverge from the stock one; gate the
+      # release on the same parity check CI runs.
+      - name: TinyGo parity gate
+        if: matrix.goos == 'linux'
+        run: make verify-tiny
+
+      - name: Build tiny binary
+        if: matrix.goos == 'linux'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          tinygo build -opt=z -no-debug \
+            -ldflags "-X main.version=${{ inputs.version || github.ref_name }}" \
+            -o vmcore-checker-tiny-linux-${{ matrix.goarch }} .
+
       - name: Generate checksums
         run: |
-          for f in vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }} vmcore-checker_*_${{ matrix.goarch }}.deb; do
+          for f in vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }} \
+                   vmcore-checker-tiny-linux-${{ matrix.goarch }} \
+                   vmcore-checker_*_${{ matrix.goarch }}.deb; do
             [ -f "$f" ] && sha256sum "$f" > "$f.sha256"
           done
           true
@@ -70,6 +94,8 @@ jobs:
           path: |
             vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }}
             vmcore-checker-${{ matrix.goos }}-${{ matrix.goarch }}.sha256
+            vmcore-checker-tiny-linux-${{ matrix.goarch }}
+            vmcore-checker-tiny-linux-${{ matrix.goarch }}.sha256
             vmcore-checker_*.deb
             vmcore-checker_*.deb.sha256
 
@@ -88,10 +114,14 @@ jobs:
           files: |
             vmcore-checker-linux-amd64/vmcore-checker-linux-amd64
             vmcore-checker-linux-amd64/vmcore-checker-linux-amd64.sha256
+            vmcore-checker-linux-amd64/vmcore-checker-tiny-linux-amd64
+            vmcore-checker-linux-amd64/vmcore-checker-tiny-linux-amd64.sha256
             vmcore-checker-linux-amd64/vmcore-checker_*.deb
             vmcore-checker-linux-amd64/vmcore-checker_*.deb.sha256
             vmcore-checker-linux-arm64/vmcore-checker-linux-arm64
             vmcore-checker-linux-arm64/vmcore-checker-linux-arm64.sha256
+            vmcore-checker-linux-arm64/vmcore-checker-tiny-linux-arm64
+            vmcore-checker-linux-arm64/vmcore-checker-tiny-linux-arm64.sha256
             vmcore-checker-linux-arm64/vmcore-checker_*.deb
             vmcore-checker-linux-arm64/vmcore-checker_*.deb.sha256
             vmcore-checker-darwin-arm64/vmcore-checker-darwin-arm64

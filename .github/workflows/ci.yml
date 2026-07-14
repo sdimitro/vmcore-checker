@@ -51,3 +51,27 @@ jobs:
 
       - name: Size budget
         run: make size-check
+
+  tinygo-parity:
+    name: TinyGo parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install TinyGo
+        run: |
+          wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.41.1/tinygo_0.41.1_amd64.deb
+          sudo dpkg -i tinygo_0.41.1_amd64.deb
+          tinygo version
+
+      - name: Behavioral parity gate (stock vs tiny)
+        run: make verify-tiny
+
+      - name: Tiny size budget
+        run: make tiny-size-check

@@ -12,6 +12,9 @@ package note
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+	"unicode/utf8"
 )
 
 // Version is the current note schema version.
@@ -77,11 +80,109 @@ func Parse(data []byte) (*Note, error) {
 	return &n, nil
 }
 
-// Encode renders the note as indented JSON with a trailing newline.
+// Encode renders the note as indented JSON with a trailing newline. The
+// output is byte-identical to encoding/json's MarshalIndent(n, "", "  ")
+// (enforced by tests), but hand-rolled so that write-only consumers such
+// as the vmcore-checker binary — which never calls Parse — do not link
+// the reflection-based JSON machinery. That keeps the binary within its
+// crash-kernel initramfs size budget.
 func (n *Note) Encode() ([]byte, error) {
-	data, err := json.MarshalIndent(n, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("encode note: %w", err)
+	var fields []string
+	add := func(key, rendered string) {
+		fields = append(fields, "  "+quoteJSON(key)+": "+rendered)
 	}
-	return append(data, '\n'), nil
+	addString := func(key, val string, omitEmpty bool) {
+		if omitEmpty && val == "" {
+			return
+		}
+		add(key, quoteJSON(val))
+	}
+
+	add("version", strconv.Itoa(n.Version))
+	addString("matched_issue", n.MatchedIssue, true)
+	addString("matched_by", n.MatchedBy, false)
+	addString("skiplist_generated", n.SkiplistGenerated, true)
+	addString("checked_at", n.CheckedAt, true)
+	addString("kernel_version", n.KernelVersion, true)
+	addString("crash_type", n.CrashType, true)
+	addString("fault_func", n.FaultFunc, true)
+
+	fp := []string{
+		"    " + quoteJSON("rip") + ": " + quoteJSON(n.Fingerprint.RIP),
+		"    " + quoteJSON("top3") + ": " + quoteJSON(n.Fingerprint.Top3),
+		"    " + quoteJSON("top5") + ": " + quoteJSON(n.Fingerprint.Top5),
+		"    " + quoteJSON("full") + ": " + quoteJSON(n.Fingerprint.Full),
+		"    " + quoteJSON("type_rip") + ": " + quoteJSON(n.Fingerprint.TypeRIP),
+	}
+	add("fingerprint", "{\n"+strings.Join(fp, ",\n")+"\n  }")
+
+	addString("panic_excerpt", n.PanicExcerpt, true)
+	if len(n.Frames) > 0 {
+		lines := make([]string, len(n.Frames))
+		for i, f := range n.Frames {
+			lines[i] = "    " + quoteJSON(f)
+		}
+		add("frames", "[\n"+strings.Join(lines, ",\n")+"\n  ]")
+	}
+
+	return []byte("{\n" + strings.Join(fields, ",\n") + "\n}\n"), nil
+}
+
+// quoteJSON quotes s exactly as encoding/json does with HTML escaping
+// enabled (the json.Marshal default): short escapes for quote, backslash,
+// \b, \f, \n, \r, \t; \u00xx for other control characters; \u003c,
+// \u003e and \u0026 for <, > and &; \ufffd for invalid UTF-8 bytes; and
+// \u2028, \u2029 for the JavaScript line separators.
+func quoteJSON(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 2)
+	b.WriteByte('"')
+	for i := 0; i < len(s); {
+		c := s[i]
+		if c < utf8.RuneSelf {
+			switch {
+			case c == '"':
+				b.WriteString(`\"`)
+			case c == '\\':
+				b.WriteString(`\\`)
+			case c == '\n':
+				b.WriteString(`\n`)
+			case c == '\r':
+				b.WriteString(`\r`)
+			case c == '\t':
+				b.WriteString(`\t`)
+			case c == '\b':
+				b.WriteString(`\b`)
+			case c == '\f':
+				b.WriteString(`\f`)
+			case c == '<':
+				b.WriteString(`\u003c`)
+			case c == '>':
+				b.WriteString(`\u003e`)
+			case c == '&':
+				b.WriteString(`\u0026`)
+			case c < 0x20:
+				b.WriteString(fmt.Sprintf(`\u%04x`, c))
+			default:
+				b.WriteByte(c)
+			}
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
+			b.WriteString(`\ufffd`)
+			i++
+			continue
+		}
+		if r == '\u2028' || r == '\u2029' {
+			b.WriteString(fmt.Sprintf(`\u%04x`, r))
+			i += size
+			continue
+		}
+		b.WriteString(s[i : i+size])
+		i += size
+	}
+	b.WriteByte('"')
+	return b.String()
 }

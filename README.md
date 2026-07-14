@@ -57,23 +57,35 @@ carries `fp-top3`, both hashes must match (more conservative).
 ## Building
 
 ```bash
-make build        # host build
-make linux-arm64  # static cross-build for the crash kernel
-make size-check   # cross-builds and enforces the 2.5 MiB size budget
+make build            # host build
+make linux-arm64      # static cross-build for the crash kernel (~2.2 MB)
+make size-check       # cross-builds and enforces the 2.2 MiB size budget
 make test
+
+make tiny-linux-arm64 # TinyGo build (~750 KB), needs tinygo installed
+make verify-tiny      # parity gate: stock vs tiny must behave identically
+make tiny-size-check  # enforces the 1 MiB tiny budget
 ```
-
-Tagged releases publish raw binaries (linux amd64/arm64, macOS arm64)
-and `.deb` packages (linux amd64/arm64) with sha256 checksums; debs are
-built by [scripts/build-deb.sh](scripts/build-deb.sh).
-
-## License
-
-MIT — see [LICENSE](LICENSE).
 
 Builds are static (`CGO_ENABLED=0`), stripped (`-s -w`), and reproducible
 (`-trimpath`). Stdlib only — the binary lands well under the initramfs
-budget and peaks below 10 MB RSS on a full kernel log.
+budget and peaks below 10 MB RSS on a full kernel log. The `note`
+package's JSON encoder is hand-rolled (byte-identical to `encoding/json`,
+enforced by tests) so write-only binaries never link the reflection-based
+encoder.
+
+For the tightest initramfs budgets there is also a
+[TinyGo](https://tinygo.org) build (`vmcore-checker-tiny-linux-*`,
+~750 KB, ~3x smaller). It compiles the exact same source;
+[scripts/verify-tiny.sh](scripts/verify-tiny.sh) gates it by requiring
+identical exit codes and byte-identical notes against the stock build
+across the whole golden corpus and all fail-open cases, in CI and again
+at release time.
+
+Tagged releases publish raw binaries (linux amd64/arm64, macOS arm64),
+TinyGo binaries (linux amd64/arm64), and `.deb` packages (linux
+amd64/arm64) with sha256 checksums; debs are built by
+[scripts/build-deb.sh](scripts/build-deb.sh).
 
 ## Crash-kernel integration
 
@@ -91,3 +103,7 @@ flowchart TD
     capture --> reboot
     reboot --> watch[Triage pipeline ingests the note, records the occurrence on the tracked issue]
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).

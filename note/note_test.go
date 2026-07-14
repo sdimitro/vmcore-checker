@@ -1,6 +1,7 @@
 package note
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -51,6 +52,59 @@ func TestParse_NoIssueKeyIsValid(t *testing.T) {
 	}
 	if _, err := Parse(data); err != nil {
 		t.Errorf("note without issue key should parse: %v", err)
+	}
+}
+
+// TestEncodeMatchesEncodingJSON pins the hand-rolled encoder to
+// encoding/json byte for byte, so it can never drift from what
+// MarshalIndent would produce. This is the compatibility contract that
+// lets write-only consumers skip linking the reflection-based encoder.
+func TestEncodeMatchesEncodingJSON(t *testing.T) {
+	notes := map[string]*Note{
+		"full": sample(),
+		"minimal": {
+			Version:   Version,
+			MatchedBy: "type-rip",
+			Fingerprint: Fingerprint{
+				RIP:     "aaaa",
+				Top3:    "bbbb",
+				Top5:    "cccc",
+				Full:    "dddd",
+				TypeRIP: "eeee",
+			},
+		},
+		"zero value": {},
+		"nasty strings": {
+			Version:      Version,
+			MatchedIssue: `quotes " backslash \ slash /`,
+			MatchedBy:    "html <>&, unicode \u2028\u2029 \u00e9 \U0001f600",
+			PanicExcerpt: "controls \x00\x01\x08\x0c\x1f tab\t nl\n cr\r invalid utf8 \xff\xfe done",
+			FaultFunc:    "kfifoGetChannelIterator_IMPL",
+			Frames:       []string{"a+0x1/0x2 [mod] (P)", "<TASK>", "b&c<d>e"},
+		},
+		"empty frames slice": {
+			Version:   Version,
+			MatchedBy: "type-rip",
+			Frames:    []string{},
+		},
+	}
+
+	for name, n := range notes {
+		t.Run(name, func(t *testing.T) {
+			want, err := json.MarshalIndent(n, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			want = append(want, '\n')
+
+			got, err := n.Encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != string(want) {
+				t.Errorf("Encode diverges from encoding/json\ngot:\n%s\nwant:\n%s", got, want)
+			}
+		})
 	}
 }
 

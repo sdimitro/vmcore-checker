@@ -37,7 +37,9 @@ import (
 //go:embed skiplist.txt
 var embeddedSkiplist string
 
-var version = "dev" // overridden via -ldflags "-X main.version=..."
+// version is stamped via -ldflags "-X main.version=...". Declared without
+// an initializer because TinyGo only applies -X to uninitialized globals.
+var version string
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stderr))
@@ -55,7 +57,11 @@ func run(args []string, errw *os.File) int {
 	}
 
 	if *showVersion {
-		fmt.Fprintf(errw, "vmcore-checker %s\n", version)
+		v := version
+		if v == "" {
+			v = "dev"
+		}
+		fmt.Fprintf(errw, "vmcore-checker %s\n", v)
 		return 0
 	}
 
