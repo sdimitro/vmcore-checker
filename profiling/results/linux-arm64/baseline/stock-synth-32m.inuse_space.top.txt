@@ -1,0 +1,17 @@
+File: vmcore-checker-prof-linux-arm64
+Build ID: 817118e84df41990f65a9c4b97929236624a9e42
+Type: inuse_space
+Time: 2026-07-14 16:08:56 EDT
+Showing nodes accounting for 2052kB, 100% of 2052kB total
+Showing top 10 nodes out of 11
+      flat  flat%   sum%        cum   cum%
+    2052kB   100%   100%     2052kB   100%  runtime.allocm
+         0     0%   100%     1539kB 75.00%  runtime.mcall
+         0     0%   100%      513kB 25.00%  runtime.mstart
+         0     0%   100%      513kB 25.00%  runtime.mstart0
+         0     0%   100%      513kB 25.00%  runtime.mstart1
+         0     0%   100%     2052kB   100%  runtime.newm
+         0     0%   100%     1539kB 75.00%  runtime.park_m
+         0     0%   100%     2052kB   100%  runtime.resetspinning
+         0     0%   100%     2052kB   100%  runtime.schedule
+         0     0%   100%     2052kB   100%  runtime.startm

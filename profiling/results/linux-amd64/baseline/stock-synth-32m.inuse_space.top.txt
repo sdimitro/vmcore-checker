@@ -1,0 +1,17 @@
+File: vmcore-checker-prof-linux-amd64
+Build ID: 66f14bf41fa0cfff6f0358ab17a55eb8fc9ef4a2
+Type: inuse_space
+Time: 2026-07-14 16:09:59 EDT
+Showing nodes accounting for 5.53MB, 100% of 5.53MB total
+Showing top 10 nodes out of 14
+      flat  flat%   sum%        cum   cum%
+    3.51MB 63.47% 63.47%     3.51MB 63.47%  runtime.allocm
+    2.02MB 36.53%   100%     2.02MB 36.53%  runtime.procresize
+         0     0%   100%        2MB 36.27%  runtime.mcall
+         0     0%   100%     1.50MB 27.20%  runtime.mstart
+         0     0%   100%     1.50MB 27.20%  runtime.mstart0
+         0     0%   100%     1.50MB 27.20%  runtime.mstart1
+         0     0%   100%     3.51MB 63.47%  runtime.newm
+         0     0%   100%        2MB 36.27%  runtime.park_m
+         0     0%   100%     3.51MB 63.47%  runtime.resetspinning
+         0     0%   100%     2.02MB 36.53%  runtime.rt0_go

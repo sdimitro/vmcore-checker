@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "matched_issue": "PROF-1",
+  "matched_by": "type-rip",
+  "skiplist_generated": "2026-01-01T00:00:00Z",
+  "checked_at": "2026-07-14T20:08:56Z",
+  "kernel_version": "6.14.0-1008-nvidia-64k",
+  "crash_type": "null_pointer",
+  "fault_func": "kfifoGetChannelIterator_IMPL",
+  "fingerprint": {
+    "rip": "5a5f1a55061fad20313bb40457638a57d480872b71b38a6346a705e33cd5dab2",
+    "top3": "c7b2fa1dcba27ac3fee74646fdc16a74d1f07e456b66ad85c5411f39668e73f6",
+    "top5": "9802638cd6df405680310afe0ce6ada67e874dc394d77470e1d4e87faed82ef1",
+    "full": "9802638cd6df405680310afe0ce6ada67e874dc394d77470e1d4e87faed82ef1",
+    "type_rip": "76571165e62ca40f72a8e6dd85b46b6c65781b814cea661a949c9126561f57f5"
+  },
+  "panic_excerpt": "Unable to handle kernel NULL pointer dereference at virtual address 0000000000000360\nInternal error: Oops: 0000000096000005 [#1] SMP\nModules linked in: nvidia(OE) t241_clink_ioctl(OE) mlx5_core(OE) [last unloaded: mods(OE)]\nCPU: 10 UID: 0 PID: 131119 Comm: nv_open_q Kdump: loaded Tainted: G           OEL     6.14.0-1008-nvidia-64k #8-Ubuntu\nHardware name: Dell Inc. Dell Server 9712a/Dell 9712a, BIOS 2.26 F01 12/30/2025\npstate: 63400009 (nZCv daif +PAN -UAO +TCO +DIT -SSBS BTYPE=--)\npc : kfifoGetChannelIterator_IMPL+0x3c/0x90 [nvidia]\nlr : kfifoGetChannelIterator_IMPL+0x30/0x90 [nvidia]\nsp : ffff8000a27cf7c0\nx29: ffff8000a27cf7c0 x28: ffff8000ad2e0098 x27: 0000000000000002",
+  "frames": [
+    "kfifoGetChannelIterator_IMPL+0x3c/0x90 [nvidia] (P)",
+    "kgspRcAndNotifyAllChannels_IMPL+0x8c/0x220 [nvidia]",
+    "osHandleGpuLost+0x138/0x140 [nvidia]",
+    "nvidia_open_deferred+0x44/0xe8 [nvidia]",
+    "kthread+0x100/0x120"
+  ]
+}

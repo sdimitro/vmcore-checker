@@ -1,0 +1,25 @@
+vmcore-checker: known crash null_pointer in kfifoGetChannelIterator_IMPL matches PROF-1 (by type-rip); skipping dump
+memstats: Sys=92563736 HeapSys=82182144 HeapInuse=78888960 HeapAlloc=78066456 TotalAlloc=145053680 Mallocs=1169574 Frees=718415
+	Command being timed: "./vmcore-checker-prof --skiplist skiplist --memstats --note results/stock-gomemlimit-8mib-synth-32m.note.json inputs/synth-32m.txt"
+	User time (seconds): 0.69
+	System time (seconds): 0.08
+	Percent of CPU this job got: 220%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.35
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 74784
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 29508
+	Voluntary context switches: 2344
+	Involuntary context switches: 9
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

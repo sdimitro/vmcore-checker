@@ -1,0 +1,17 @@
+File: vmcore-checker-prof-linux-amd64
+Build ID: 66f14bf41fa0cfff6f0358ab17a55eb8fc9ef4a2
+Type: alloc_space
+Time: 2026-07-14 16:09:58 EDT
+Showing nodes accounting for 11181.72kB, 100% of 11181.72kB total
+Showing top 10 nodes out of 23
+      flat  flat%   sum%        cum   cum%
+ 2560.27kB 22.90% 22.90%  5120.51kB 45.79%  regexp.(*Regexp).ReplaceAllString
+ 2560.23kB 22.90% 45.79%  2560.23kB 22.90%  regexp.(*Regexp).replaceAll
+ 2067.06kB 18.49% 64.28%  2067.06kB 18.49%  runtime.procresize
+    2052kB 18.35% 82.63%     2052kB 18.35%  runtime.allocm
+  971.07kB  8.68% 91.32%  7062.66kB 63.16%  main.run
+  971.07kB  8.68%   100%   971.07kB  8.68%  os.readFileContents
+         0     0%   100%  5120.51kB 45.79%  github.com/sdimitro/crashfp/dmesgcrash.Parse
+         0     0%   100%  5120.51kB 45.79%  github.com/sdimitro/crashfp/dmesgcrash.StripPrefix
+         0     0%   100%  7062.66kB 63.16%  main.main
+         0     0%   100%   971.07kB  8.68%  os.ReadFile

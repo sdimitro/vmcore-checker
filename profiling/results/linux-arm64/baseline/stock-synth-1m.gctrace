@@ -1,0 +1,2 @@
+gc 1 @0.003s 0%: 0.017+1.9+0.001 ms clock, 0.25+0.17/0.064/0+0.025 ms cpu, 3->4->2 MB, 4 MB goal, 0 MB stacks, 0 MB globals, 14 P
+vmcore-checker: known crash null_pointer in kfifoGetChannelIterator_IMPL matches PROF-1 (by type-rip); skipping dump

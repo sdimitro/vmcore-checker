@@ -55,5 +55,14 @@ tiny-size-check: tiny-linux-amd64 tiny-linux-arm64
 verify-tiny:
 	scripts/verify-tiny.sh
 
+# Profiling builds (-tags memprofile): add -memstats and -memprofile
+# flags. Never released; see profiling/PROFILING.md.
+profile-linux-%:
+	CGO_ENABLED=0 GOOS=linux GOARCH=$* go build $(GOFLAGS) -tags memprofile -ldflags "$(LDFLAGS)" -o $(BINARY)-prof-linux-$* .
+
+tiny-profile-linux-%:
+	GOOS=linux GOARCH=$* $(TINYGO) build -opt=z -no-debug -tags memprofile -o $(BINARY)-tiny-prof-linux-$* .
+
 clean:
-	rm -f $(BINARY) $(BINARY)-linux-amd64 $(BINARY)-linux-arm64 $(BINARY)-tiny-linux-amd64 $(BINARY)-tiny-linux-arm64
+	rm -f $(BINARY) $(BINARY)-linux-amd64 $(BINARY)-linux-arm64 $(BINARY)-tiny-linux-amd64 $(BINARY)-tiny-linux-arm64 \
+		$(BINARY)-prof-linux-amd64 $(BINARY)-prof-linux-arm64 $(BINARY)-tiny-prof-linux-amd64 $(BINARY)-tiny-prof-linux-arm64

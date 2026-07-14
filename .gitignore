@@ -1,2 +1,6 @@
 /vmcore-checker
 /vmcore-checker-linux-*
+profiling/inputs/
+vmcore-checker-prof-*
+vmcore-checker-tiny-prof-*
+/profiling/report.html

@@ -42,7 +42,9 @@ var embeddedSkiplist string
 var version string
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stderr))
+	code := run(os.Args[1:], os.Stderr)
+	profileAtExit(&code)
+	os.Exit(code)
 }
 
 func run(args []string, errw *os.File) int {
@@ -52,6 +54,7 @@ func run(args []string, errw *os.File) int {
 	notePath := fs.String("note", "", "write a note.json describing the matched crash to this path")
 	printList := fs.Bool("print-skiplist", false, "print the effective skip-list and exit")
 	showVersion := fs.Bool("version", false, "print version and exit")
+	profileFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -90,7 +93,7 @@ func run(args []string, errw *os.File) int {
 		return 1
 	}
 
-	crash := dmesgcrash.Parse(string(raw))
+	crash := dmesgcrash.ParseBytes(raw)
 	if crash == nil || len(crash.StackTrace) == 0 {
 		fmt.Fprintf(errw, "vmcore-checker: no crash backtrace found in dmesg; capturing dump\n")
 		return 1

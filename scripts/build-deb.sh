@@ -57,7 +57,7 @@ cat > "$STAGE/DEBIAN/control" <<EOF
 Package: $PACKAGE
 Version: $VERSION
 Architecture: $ARCH
-Maintainer: Serapheim Dimitropoulos <sdimitropoulos@coreweave.com>
+Maintainer: Serapheim Dimitropoulos <sdimitro@users.noreply.github.com>
 Section: admin
 Priority: optional
 Homepage: https://github.com/sdimitro/vmcore-checker

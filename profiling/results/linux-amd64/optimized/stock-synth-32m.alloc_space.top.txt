@@ -1,0 +1,17 @@
+File: vmcore-checker-prof-linux-amd64
+Build ID: f7261966ab92f649b333196c1357c0526519fc78
+Type: alloc_space
+Time: 2026-07-14 16:26:44 EDT
+Showing nodes accounting for 37403.51kB, 100% of 37403.51kB total
+Showing top 10 nodes out of 23
+      flat  flat%   sum%        cum   cum%
+   32776kB 87.63% 87.63%    32776kB 87.63%  os.readFileContents
+    2565kB  6.86% 94.49%     2565kB  6.86%  runtime.allocm
+ 1550.29kB  4.14% 98.63%  1550.29kB  4.14%  runtime.procresize
+  512.22kB  1.37%   100%   512.22kB  1.37%  runtime.malg
+         0     0%   100%    32776kB 87.63%  main.main
+         0     0%   100%    32776kB 87.63%  main.run
+         0     0%   100%    32776kB 87.63%  os.ReadFile
+         0     0%   100%    32776kB 87.63%  runtime.main
+         0     0%   100%     1539kB  4.11%  runtime.mcall
+         0     0%   100%     1026kB  2.74%  runtime.mstart

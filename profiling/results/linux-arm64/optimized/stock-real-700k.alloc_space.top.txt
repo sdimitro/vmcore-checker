@@ -1,0 +1,17 @@
+File: vmcore-checker-prof-linux-arm64
+Build ID: 7f04f16a893ea2cbff9d17c65fba1d9341a16c4c
+Type: alloc_space
+Time: 2026-07-14 16:26:32 EDT
+Showing nodes accounting for 2513.84kB, 100% of 2513.84kB total
+Showing top 10 nodes out of 19
+      flat  flat%   sum%        cum   cum%
+    1026kB 40.81% 40.81%     1026kB 40.81%  runtime.allocm
+  971.07kB 38.63% 79.44%   971.07kB 38.63%  os.readFileContents
+  516.76kB 20.56%   100%   516.76kB 20.56%  runtime.procresize
+         0     0%   100%   971.07kB 38.63%  main.main
+         0     0%   100%   971.07kB 38.63%  main.run
+         0     0%   100%   971.07kB 38.63%  os.ReadFile
+         0     0%   100%   971.07kB 38.63%  runtime.main
+         0     0%   100%      513kB 20.41%  runtime.mcall
+         0     0%   100%      513kB 20.41%  runtime.mstart
+         0     0%   100%      513kB 20.41%  runtime.mstart0
