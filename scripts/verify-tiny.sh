@@ -103,5 +103,11 @@ run "missing dmesg" no "$WORK/does-not-exist.txt"
 run "malformed extra skiplist" no --skiplist "$WORK/badlist" "$WORK/garbage.txt"
 run "missing extra skiplist" no --skiplist "$WORK/no-such-list" "$WORK/garbage.txt"
 
+# Lenient parsing: a bad line in the extras file is skipped with a
+# warning, and the valid entries after it still match.
+first_log=$(ls "$CORPUS_DIR"/*.txt | head -1)
+{ echo "this line is garbage"; cat "$SKIPLIST"; } > "$WORK/mixedlist"
+run "bad line does not disable list" yes --skiplist "$WORK/mixedlist" "$first_log"
+
 [ $fail -eq 0 ] && echo "PASS: stock and tiny builds behave identically"
 exit $fail

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,9 +21,7 @@ fp-type-rip:76571165e62ca40f
 fp-type-rip:0011223344556677 fp-rip:8899aabbccddeeff KERN-999
 `
 	var l skiplist
-	if err := l.parse(src); err != nil {
-		t.Fatalf("parse: %v", err)
-	}
+	l.parse(src, "test", io.Discard)
 	if l.generated != "2026-07-14T12:00:00Z" {
 		t.Errorf("generated: got %q", l.generated)
 	}
@@ -40,30 +40,61 @@ fp-type-rip:0011223344556677 fp-rip:8899aabbccddeeff KERN-999
 	}
 }
 
-func TestSkiplistParse_Malformed(t *testing.T) {
-	cases := []string{
-		"no-labels-here",               // no type-rip
-		"fp-top3:9a1b2c3d4e5f6071 X-1", // top3 without type-rip
-		"fp-type-rip:NOTHEX",           // non-hex hash
-		"fp-type-rip:de43 fp-top3:XYZ", // non-hex top3
-		"fp-type-rip:",                 // empty hash
+// Malformed lines are skipped with a warning instead of rejecting the
+// whole list: one bad hand-added entry must not disable the fast path.
+func TestSkiplistParse_SkipsMalformed(t *testing.T) {
+	src := strings.Join([]string{
+		"no-labels-here",                           // no type-rip
+		"fp-top3:9a1b2c3d4e5f6071 X-1",             // top3 without type-rip
+		"fp-type-rip:NOTAHEXSTRING",                // non-hex hash
+		"fp-type-rip:de433837302e1e77 fp-top3:XYZ", // non-hex top3
+		"fp-type-rip:",                             // empty hash
+		"fp-type-rip:de433837302e",                 // 12 hex: at the floor, valid
+		"fp-type-rip:de43383730",                   // 10 hex: below the floor
+		"fp-type-rip:76571165e62ca40f KERN-42",     // valid
+	}, "\n")
+
+	var warnings bytes.Buffer
+	var l skiplist
+	l.parse(src, "extras", &warnings)
+
+	if len(l.entries) != 2 {
+		t.Fatalf("entries: got %d (%v), want 2", len(l.entries), l.entries)
 	}
-	for _, src := range cases {
-		var l skiplist
-		if err := l.parse(src); err == nil {
-			t.Errorf("parse(%q): expected error", src)
-		}
+	if e := l.entries[0]; e.typeRIP != "de433837302e" {
+		t.Errorf("floor entry: %+v", e)
+	}
+	if e := l.entries[1]; e.typeRIP != "76571165e62ca40f" || e.issue != "KERN-42" {
+		t.Errorf("valid entry: %+v", e)
+	}
+	if n := strings.Count(warnings.String(), "skipping malformed skip-list entry"); n != 6 {
+		t.Errorf("warnings: got %d, want 6\n%s", n, warnings.String())
+	}
+	if !strings.Contains(warnings.String(), "extras line 2:") {
+		t.Errorf("warning should carry source and line number:\n%s", warnings.String())
+	}
+}
+
+// A malformed line must not prevent later valid entries from matching.
+func TestRun_MalformedLineDoesNotDisableList(t *testing.T) {
+	dir := t.TempDir()
+	dmesg := writeFile(t, dir, "dmesg.txt", sampleDmesg)
+	extras := writeFile(t, dir, "extras",
+		"this line is garbage\nfp-type-rip:"+sampleTypeRIPPrefix+" KERN-1234\n")
+
+	if code := run([]string{"--skiplist", extras, dmesg}, os.Stderr); code != 0 {
+		t.Errorf("exit code: got %d, want 0 (valid entry should still match)", code)
 	}
 }
 
 func TestSkiplistMatch(t *testing.T) {
 	var l skiplist
-	err := l.parse(strings.Join([]string{
+	l.parse(strings.Join([]string{
 		"fp-type-rip:aaaa000000000000 fp-top3:bbbb000000000000 X-1",
 		"fp-type-rip:cccc000000000000 X-2",
-	}, "\n"))
-	if err != nil {
-		t.Fatal(err)
+	}, "\n"), "test", io.Discard)
+	if len(l.entries) != 2 {
+		t.Fatalf("entries: got %d, want 2", len(l.entries))
 	}
 
 	fp := func(typeRIP, top3 string) *fingerprint.Fingerprint {
@@ -89,7 +120,7 @@ func TestSkiplistMatch(t *testing.T) {
 }
 
 func TestLoadSkiplist_MissingExtrasFails(t *testing.T) {
-	if _, err := loadSkiplist("", "/nonexistent/skiplist"); err == nil {
+	if _, err := loadSkiplist("", "/nonexistent/skiplist", io.Discard); err == nil {
 		t.Error("expected error for missing extras file")
 	}
 }
@@ -230,7 +261,9 @@ func TestRun_FailOpen(t *testing.T) {
 		{"no crash in dmesg", []string{writeFile(t, dir, "boring.txt", "[ 0.0] [T0] Linux version 6.1.0 (a@b) (gcc) #1\n[ 1.0] [T1] systemd booted\n")}},
 		{"empty dmesg", []string{writeFile(t, dir, "empty.txt", "")}},
 		{"missing extras file", []string{"--skiplist", filepath.Join(dir, "nope-list"), dmesg}},
-		{"malformed extras file", []string{"--skiplist", writeFile(t, dir, "bad-list", "this is not a skiplist entry\n"), dmesg}},
+		// Malformed lines are skipped (not fatal), so an extras file with
+		// only bad lines contributes nothing and the crash stays unmatched.
+		{"extras with only malformed lines", []string{"--skiplist", writeFile(t, dir, "bad-list", "this is not a skiplist entry\n"), dmesg}},
 		{"no args", nil},
 		{"too many args", []string{dmesg, dmesg}},
 	}

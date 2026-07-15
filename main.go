@@ -69,7 +69,7 @@ func run(args []string, errw *os.File) int {
 		return 0
 	}
 
-	list, err := loadSkiplist(embeddedSkiplist, *skiplistPath)
+	list, err := loadSkiplist(embeddedSkiplist, *skiplistPath, errw)
 	if err != nil {
 		fmt.Fprintf(errw, "vmcore-checker: %v\n", err)
 		return 1

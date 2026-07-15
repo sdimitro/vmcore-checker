@@ -60,6 +60,14 @@ fingerprint hash (required), optionally the `top3` prefix, and
 optionally an issue key that gets recorded in the note. When a line
 carries `fp-top3`, both hashes must match (more conservative).
 
+Malformed entries are **skipped with a warning** rather than treated as
+fatal — a bad hand-added line can only cause a missed match (the dump
+gets captured anyway), never a wrong skip, and must not disable the
+fast path for the whole node. Hash prefixes shorter than 12 hex chars
+count as malformed so a truncated hash cannot become a dangerously
+broad match. A missing or unreadable `--skiplist` file is still a hard
+error: an explicit flag pointing nowhere is a deployment bug.
+
 ## Building
 
 ```bash
